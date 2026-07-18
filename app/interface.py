@@ -1,6 +1,10 @@
 """
 TalkForge — Gradio web interface.
 
+Compatible with Gradio 4.x, 5.x, and 6.x.  Deprecated / removed parameters
+are guarded by a runtime version check so the same file works across all
+supported Gradio releases without patching.
+
 Single-page layout:
   • Upload portrait image
   • Upload audio file
@@ -15,9 +19,20 @@ import gradio as gr
 
 from app.pipeline import run_pipeline, init_model
 
+# ---------------------------------------------------------------------------
+# Gradio version detection — guard deprecated / removed API parameters
+# ---------------------------------------------------------------------------
+
+def _gradio_major() -> int:
+    try:
+        return int(gr.__version__.split(".")[0])
+    except Exception:
+        return 4   # safe fallback
+
+_GR_MAJOR = _gradio_major()
 
 # ---------------------------------------------------------------------------
-# CSS — modern, clean look
+# CSS — modern, clean dark look
 # ---------------------------------------------------------------------------
 
 CSS = """
@@ -59,9 +74,7 @@ body, .gradio-container {
   padding: 1rem;
   transition: border-color 0.2s;
 }
-.upload-col:hover {
-  border-color: #7c6fef;
-}
+.upload-col:hover { border-color: #7c6fef; }
 .upload-col label {
   font-size: 0.78rem !important;
   font-weight: 600 !important;
@@ -86,7 +99,7 @@ body, .gradio-container {
   box-shadow: 0 4px 24px rgba(124, 111, 239, 0.35);
   width: 100%;
 }
-#generate-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+#generate-btn:hover  { opacity: 0.88; transform: translateY(-1px); }
 #generate-btn:active { transform: translateY(0); }
 #generate-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
@@ -123,35 +136,16 @@ body, .gradio-container {
 }
 .action-btn:hover { opacity: 0.82; }
 
-#download-btn {
-  background: #1e6e45 !important;
-  color: #fff !important;
-  border: none !important;
-}
-#discard-btn {
-  background: #6b1a1a !important;
-  color: #fff !important;
-  border: none !important;
-}
-#new-btn {
-  background: #2a2d3e !important;
-  color: #e8eaf0 !important;
-  border: 1.5px solid #3a3f58 !important;
-}
+#download-btn { background: #1e6e45 !important; color: #fff !important; border: none !important; }
+#discard-btn  { background: #6b1a1a !important; color: #fff !important; border: none !important; }
+#new-btn      { background: #2a2d3e !important; color: #e8eaf0 !important; border: 1.5px solid #3a3f58 !important; }
 
 /* ── Spinner animation ── */
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
+@keyframes spin { to { transform: rotate(360deg); } }
 .spinner {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 2px solid #3a3f58;
-  border-top-color: #7c6fef;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-  flex-shrink: 0;
+  display: inline-block; width: 16px; height: 16px;
+  border: 2px solid #3a3f58; border-top-color: #7c6fef;
+  border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0;
 }
 
 /* ── Hide Gradio branding footer ── */
@@ -163,23 +157,6 @@ footer { display: none !important; }
 }
 """
 
-# ---------------------------------------------------------------------------
-# JS helpers
-# ---------------------------------------------------------------------------
-
-JS_SPINNER = """
-function addSpinner(status) {
-  var box = document.querySelector('#status-box');
-  if (!box) return status;
-  if (status && status !== '' && !box.querySelector('.spinner')) {
-    var sp = document.createElement('span');
-    sp.className = 'spinner';
-    box.prepend(sp);
-  }
-  return status;
-}
-"""
-
 
 # ---------------------------------------------------------------------------
 # Interface builder
@@ -188,12 +165,11 @@ function addSpinner(status) {
 def build_interface(output_dir: str = "outputs", weights_dir: str = "weights") -> gr.Blocks:
     """Construct and return the Gradio Blocks app."""
 
-    # Initialise the model singleton (non-blocking; weights download happens at first generate)
     init_model(weights_dir=weights_dir)
 
     with gr.Blocks(css=CSS, title="TalkForge — AI Lip Sync") as demo:
 
-        # ── Header ──────────────────────────────────────────────────────
+        # ── Header ──────────────────────────────────────────────────────────
         gr.HTML("""
         <div id="talkforge-header">
           <h1>TalkForge</h1>
@@ -201,55 +177,50 @@ def build_interface(output_dir: str = "outputs", weights_dir: str = "weights") -
         </div>
         """)
 
-        # ── Upload section ───────────────────────────────────────────────
+        # ── Upload section ───────────────────────────────────────────────────
         with gr.Row(equal_height=True):
             with gr.Column(elem_classes="upload-col"):
                 image_input = gr.Image(
                     label="Portrait Image",
                     type="filepath",
                     sources=["upload"],
-                    image_mode="RGB",
                     elem_id="image-upload",
-                    show_label=True,
                     height=260,
                 )
-
             with gr.Column(elem_classes="upload-col"):
                 audio_input = gr.Audio(
                     label="Audio File",
                     type="filepath",
                     sources=["upload"],
                     elem_id="audio-upload",
-                    show_label=True,
                 )
 
         gr.HTML("<div style='height:1rem'></div>")
 
-        # ── Generate button ──────────────────────────────────────────────
+        # ── Generate button ──────────────────────────────────────────────────
         generate_btn = gr.Button(
             "✦  Generate Video",
             elem_id="generate-btn",
             variant="primary",
-            interactive=True,
         )
 
-        # ── Status display ───────────────────────────────────────────────
-        status_display = gr.HTML(
-            value="",
-            elem_id="status-box",
-            visible=False,
-        )
+        # ── Status display ───────────────────────────────────────────────────
+        status_display = gr.HTML(value="", elem_id="status-box", visible=False)
 
-        # ── Video preview ────────────────────────────────────────────────
-        video_output = gr.Video(
+        # ── Video preview ────────────────────────────────────────────────────
+        # Build kwargs defensively — show_download_button removed in Gradio 5
+        _video_kw = dict(
             label="Generated Video",
             elem_id="video-preview",
             visible=False,
             autoplay=True,
-            show_download_button=False,
         )
+        if _GR_MAJOR < 5:
+            _video_kw["show_download_button"] = False
 
-        # ── Action buttons (shown after generation) ──────────────────────
+        video_output = gr.Video(**_video_kw)
+
+        # ── Action buttons (shown after generation) ──────────────────────────
         with gr.Row(visible=False) as action_row:
             download_btn = gr.DownloadButton(
                 label="⬇  Download Video",
@@ -268,10 +239,10 @@ def build_interface(output_dir: str = "outputs", weights_dir: str = "weights") -
                 elem_classes="action-btn",
             )
 
-        # ── Error display ────────────────────────────────────────────────
+        # ── Error display ────────────────────────────────────────────────────
         error_display = gr.HTML(value="", visible=False)
 
-        # ── Hidden state ─────────────────────────────────────────────────
+        # ── Hidden state ─────────────────────────────────────────────────────
         video_path_state = gr.State(value=None)
 
         # ====================================================================
@@ -281,43 +252,33 @@ def build_interface(output_dir: str = "outputs", weights_dir: str = "weights") -
         def on_generate(image_path, audio_path):
             """
             Generator that drives the pipeline and yields UI updates.
-            Each yield is a tuple of component updates in the order:
-              status_display, video_output, action_row, error_display,
-              video_path_state, download_btn, generate_btn
+            Yield order: status_display, video_output, action_row,
+                         error_display, video_path_state, download_btn, generate_btn
             """
             if not image_path:
                 yield (
                     _status_html("Please upload a portrait image.", icon="⚠"),
-                    gr.update(visible=False),
-                    gr.update(visible=False),
-                    gr.update(value="", visible=False),
-                    None,
-                    gr.update(value=None),
-                    gr.update(interactive=True),
+                    gr.update(visible=False), gr.update(visible=False),
+                    gr.update(value="", visible=False), None,
+                    gr.update(value=None), gr.update(interactive=True),
                 )
                 return
 
             if not audio_path:
                 yield (
                     _status_html("Please upload an audio file.", icon="⚠"),
-                    gr.update(visible=False),
-                    gr.update(visible=False),
-                    gr.update(value="", visible=False),
-                    None,
-                    gr.update(value=None),
-                    gr.update(interactive=True),
+                    gr.update(visible=False), gr.update(visible=False),
+                    gr.update(value="", visible=False), None,
+                    gr.update(value=None), gr.update(interactive=True),
                 )
                 return
 
             # Show status, hide video, disable button
             yield (
                 _status_html("Starting…", spinner=True),
-                gr.update(visible=False),
-                gr.update(visible=False),
-                gr.update(value="", visible=False),
-                None,
-                gr.update(value=None),
-                gr.update(interactive=False),
+                gr.update(visible=False), gr.update(visible=False),
+                gr.update(value="", visible=False), None,
+                gr.update(value=None), gr.update(interactive=False),
             )
 
             try:
@@ -331,24 +292,18 @@ def build_interface(output_dir: str = "outputs", weights_dir: str = "weights") -
                         video_path = maybe_video
                     yield (
                         _status_html(status_msg, spinner=(maybe_video is None)),
-                        gr.update(visible=False),
-                        gr.update(visible=False),
-                        gr.update(value="", visible=False),
-                        video_path,
-                        gr.update(value=None),
-                        gr.update(interactive=False),
+                        gr.update(visible=False), gr.update(visible=False),
+                        gr.update(value="", visible=False), video_path,
+                        gr.update(value=None), gr.update(interactive=False),
                     )
 
-                # Final yield — show video + action buttons
                 if video_path:
                     yield (
                         _status_html("✓ Done! Your video is ready.", spinner=False),
                         gr.update(value=video_path, visible=True),
                         gr.update(visible=True),
-                        gr.update(value="", visible=False),
-                        video_path,
-                        gr.update(value=video_path),
-                        gr.update(interactive=True),
+                        gr.update(value="", visible=False), video_path,
+                        gr.update(value=video_path), gr.update(interactive=True),
                     )
                 else:
                     raise RuntimeError("Pipeline finished without producing a video file.")
@@ -362,42 +317,33 @@ def build_interface(output_dir: str = "outputs", weights_dir: str = "weights") -
                 )
                 yield (
                     _status_html("Generation failed.", icon="✕"),
-                    gr.update(visible=False),
-                    gr.update(visible=False),
-                    gr.update(value=error_html, visible=True),
-                    None,
-                    gr.update(value=None),
-                    gr.update(interactive=True),
+                    gr.update(visible=False), gr.update(visible=False),
+                    gr.update(value=error_html, visible=True), None,
+                    gr.update(value=None), gr.update(interactive=True),
                 )
 
         generate_btn.click(
             fn=on_generate,
             inputs=[image_input, audio_input],
             outputs=[
-                status_display,
-                video_output,
-                action_row,
-                error_display,
-                video_path_state,
-                download_btn,
-                generate_btn,
+                status_display, video_output, action_row,
+                error_display, video_path_state, download_btn, generate_btn,
             ],
         )
 
-        # ── Discard ──────────────────────────────────────────────────────
+        # ── Discard ──────────────────────────────────────────────────────────
         def on_discard(video_path):
-            """Delete the generated file and hide the preview."""
             if video_path:
                 try:
                     os.remove(video_path)
                 except OSError:
                     pass
             return (
-                gr.update(visible=False),   # video_output
-                gr.update(visible=False),   # action_row
-                gr.update(value="", visible=False),   # status_display
-                None,                        # video_path_state
-                gr.update(value=None),       # download_btn
+                gr.update(visible=False),              # video_output
+                gr.update(visible=False),              # action_row
+                gr.update(value="", visible=False),    # status_display
+                None,                                   # video_path_state
+                gr.update(value=None),                 # download_btn
             )
 
         discard_btn.click(
@@ -406,7 +352,7 @@ def build_interface(output_dir: str = "outputs", weights_dir: str = "weights") -
             outputs=[video_output, action_row, status_display, video_path_state, download_btn],
         )
 
-        # ── Generate New (full page reset) ───────────────────────────────
+        # ── Generate New (full reset) ─────────────────────────────────────────
         def on_new():
             return (
                 None,                                # image_input
@@ -424,15 +370,9 @@ def build_interface(output_dir: str = "outputs", weights_dir: str = "weights") -
             fn=on_new,
             inputs=[],
             outputs=[
-                image_input,
-                audio_input,
-                video_output,
-                action_row,
-                status_display,
-                error_display,
-                video_path_state,
-                download_btn,
-                generate_btn,
+                image_input, audio_input, video_output, action_row,
+                status_display, error_display, video_path_state,
+                download_btn, generate_btn,
             ],
         )
 
@@ -444,7 +384,7 @@ def build_interface(output_dir: str = "outputs", weights_dir: str = "weights") -
 # ---------------------------------------------------------------------------
 
 def _status_html(message: str, spinner: bool = False, icon: str = "") -> gr.update:
-    """Return an HTML update for the status display component."""
+    """Return an HTML gr.update for the status display component."""
     inner = ""
     if spinner:
         inner = '<span class="spinner"></span>'

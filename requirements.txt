@@ -1,67 +1,63 @@
 # TalkForge — Python dependencies
-# These versions are tested for compatibility across Python 3.10 – 3.12
-# and the current Google Colab environment.
+# Tested on Python 3.12 / CUDA 12.8 / current Google Colab (2025–2026).
 #
-# Install with:  pip install -r requirements.txt
+# Install in a fresh environment:
+#   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+#   pip install -r requirements.txt
 #
-# Note: torch / torchvision / torchaudio are installed separately in the Colab
-# notebook (CUDA wheel).  Listed here for reference in local installs.
+# In Google Colab, torch is already installed — just run:
+#   pip install -r requirements.txt
 
-# ── Web UI ─────────────────────────────────────────────────────────────────
-gradio>=4.26.0,<5.0.0
+# ── Web UI ──────────────────────────────────────────────────────────────────
+gradio>=4.44.0          # 4.44 = last stable before Gradio 5; works with 5.x too
 
-# ── Deep learning ──────────────────────────────────────────────────────────
-torch>=2.1.0
-torchvision>=0.16.0
-torchaudio>=2.1.0
+# ── Deep learning (pre-installed in Colab) ───────────────────────────────────
+# torch>=2.1.0         # provided by Colab — do NOT install here to avoid downgrade
+# torchvision>=0.16.0  # provided by Colab
 
-# ── Model serialisation ─────────────────────────────────────────────────────
+# ── Model serialisation ───────────────────────────────────────────────────────
 safetensors>=0.4.0
 
-# ── Computer vision / image ─────────────────────────────────────────────────
+# ── Image / video ─────────────────────────────────────────────────────────────
 opencv-python-headless>=4.9.0
 Pillow>=10.0.0
 imageio>=2.28.0
 imageio-ffmpeg>=0.4.9
 scikit-image>=0.21.0
+av>=11.0.0
 
-# ── Audio processing ────────────────────────────────────────────────────────
+# ── Audio ─────────────────────────────────────────────────────────────────────
 librosa>=0.10.0
 soundfile>=0.12.1
 resampy>=0.4.2
 pydub>=0.25.1
-av>=11.0.0
 
-# ── Numerical / scientific ──────────────────────────────────────────────────
-# numpy < 2.0 required by basicsr / older scipy APIs
-numpy>=1.24.0,<2.0.0
+# ── Numerical / scientific ────────────────────────────────────────────────────
+numpy>=1.24.0,<2.1.0   # <2.1 for basicsr compatibility
 scipy>=1.11.0
 
-# ── ML utilities ────────────────────────────────────────────────────────────
+# ── ML utilities ──────────────────────────────────────────────────────────────
 einops>=0.7.0
 kornia>=0.7.0
 
-# ── Face detection / landmark ───────────────────────────────────────────────
+# ── Face detection / landmark ─────────────────────────────────────────────────
 face-alignment>=1.4.1
-# dlib requires cmake; installed separately in Colab notebook
+# dlib: compiled from source or use prebuilt wheel
+#   pip install dlib          (latest, may compile from source)
 
-# ── 3D face fitting ─────────────────────────────────────────────────────────
-# h5py not strictly required by SadTalker but kept for compatibility
-h5py>=3.10.0
-
-# ── Enhancement stack ───────────────────────────────────────────────────────
-# basicsr must be installed before gfpgan / realesrgan
+# ── Enhancement stack ─────────────────────────────────────────────────────────
 basicsr>=1.4.2
 facexlib>=0.3.0
 realesrgan>=0.3.0
 gfpgan>=1.3.8
 
-# ── SadTalker utilities ─────────────────────────────────────────────────────
+# ── SadTalker utilities ───────────────────────────────────────────────────────
 yacs>=0.1.8
 pyyaml>=6.0
 tqdm>=4.66.0
 requests>=2.31.0
 joblib>=1.3.0
+addict>=2.4.0
 
-# ── Notebook extras ─────────────────────────────────────────────────────────
-ipython>=8.0.0
+# ── HuggingFace downloads ─────────────────────────────────────────────────────
+huggingface_hub>=0.20.0
