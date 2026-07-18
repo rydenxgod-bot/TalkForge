@@ -1,311 +1,258 @@
-# TalkForge
+# ⚡ TalkForge
 
-> Upload a portrait. Add audio. Get a talking-head video with accurate lip sync — in one click.
+**Upload a portrait. Upload audio. Get a talking video.**
 
-TalkForge is an open-source, single-feature V1 tool for generating lip-synced talking-head videos from a static portrait image and an audio file. It runs as a local Gradio web app or entirely inside Google Colab — no account, no subscription, no cloud upload required.
+TalkForge is a free, open-source, single-feature AI tool that turns any front-facing portrait image and audio clip into a lip-synced talking-head MP4. Powered by [SadTalker](https://github.com/OpenTalker/SadTalker) and served through a clean Gradio web interface.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-yellow.svg)](https://www.python.org)
-[![Powered by SadTalker](https://img.shields.io/badge/Model-SadTalker-purple.svg)](https://github.com/OpenTalker/SadTalker)
+No accounts. No payments. No hidden APIs. One button.
 
 ---
 
-## Features
+## ✨ Features
 
-- **One-click generation** — upload an image, upload audio, press Generate
-- **Live status updates** — watch each pipeline stage in real time
-- **In-browser video preview** — the finished MP4 plays directly in the page
-- **Download / Discard / Generate New** — full workflow in a single screen
-- **Swappable model backend** — SadTalker is the default; replacing it is a single-file change (see [Swapping the Model](#swapping-the-model))
-- **Google Colab ready** — `TalkForge.ipynb` sets up everything automatically, no configuration needed
-- **MIT licensed** — use it, fork it, build on it
-
----
-
-## How It Works
-
-```
-Portrait image  ─┐
-                  ├──► SadTalker (lip sync + head motion) ──► GFPGAN (enhance) ──► MP4
-Audio file      ─┘
-```
-
-SadTalker reconstructs a 3-D face from the portrait, drives it with the audio's mel-spectrogram, and renders frames with natural head pose and blink motion — not just mouth movement.
+- **Upload & Generate** — Drop in a JPG/PNG portrait and a WAV/MP3 audio file, click one button
+- **Live progress messages** — Preparing Model → Loading Weights → Processing Audio → Generating Frames → Rendering Video → Finalising Output
+- **Auto-preview** — Generated MP4 plays inside the page immediately
+- **Download / Discard / Generate New** — Three action buttons for post-generation workflow
+- **Full reset** — "Generate New" clears everything so you can start fresh instantly
+- **Google Colab ready** — Open notebook, run all, get a public URL. No setup required
 
 ---
 
-## Project Structure
+## 🗂 Project Structure
 
 ```
 TalkForge/
 ├── app/
-│   ├── interface.py      ← Gradio UI (layout, events, CSS)
-│   ├── pipeline.py       ← Generation pipeline (validate → pre-process → model → output)
-│   └── utils.py          ← File helpers, audio/image utilities
-├── models/
-│   ├── base.py           ← Abstract BaseLipSyncModel (defines the swap interface)
-│   ├── sadtalker.py      ← SadTalker backend wrapper
-│   └── SadTalker/        ← Cloned at runtime (git-ignored)
-├── weights/              ← Downloaded model checkpoints (git-ignored)
-│   ├── checkpoints/      ← SadTalker .safetensors / .pth.tar + BFM_Fitting/
-│   └── gfpgan/weights/   ← GFPGANv1.4.pth
-├── outputs/              ← Generated MP4 files (git-ignored)
-├── examples/             ← Drop test portrait + audio here
-├── main.py               ← CLI entry point
-├── setup_weights.py      ← Pre-download all model weights
-├── requirements.txt      ← Python dependencies
-├── TalkForge.ipynb       ← Google Colab one-click notebook
-└── LICENSE               ← MIT
+│   ├── __init__.py
+│   ├── inference.py       # Model wrapper (swap model here — no frontend changes needed)
+│   └── ui.py              # Gradio UI (all visual logic lives here)
+├── SadTalker/             # Auto-cloned by setup.py / Colab notebook
+├── weights/               # Auto-downloaded model checkpoints
+├── outputs/               # Generated MP4 files saved here
+├── examples/              # Sample portrait + audio for testing
+├── static/                # Reserved for future static assets
+├── main.py                # Entry point: python main.py --share
+├── setup.py               # One-shot automated setup script
+├── requirements.txt
+├── TalkForge.ipynb        # Google Colab notebook (run all → done)
+└── README.md
 ```
 
 ---
 
-## Hardware Requirements
+## ⚙️ Hardware Requirements
 
-| | Minimum | Recommended |
-|---|---------|-------------|
-| GPU VRAM | 4 GB | 8 GB+ |
-| RAM | 8 GB | 16 GB+ |
-| Storage | 8 GB free | 12 GB free |
-| GPU | NVIDIA (CUDA 11.8+) | NVIDIA RTX 3060+ |
+| Environment | Minimum | Recommended |
+|---|---|---|
+| GPU | NVIDIA 6 GB VRAM | NVIDIA 8 GB+ VRAM (T4 / A100) |
+| RAM | 8 GB | 16 GB |
+| Disk | 8 GB free | 12 GB free |
+| Python | 3.9+ | 3.10 |
 
-> **CPU is supported** but generation takes several minutes per clip instead of ~30 seconds on GPU.
+> CPU-only is technically possible but will be **very slow** (10–30 min per video). A GPU is strongly recommended.
 
 ---
 
-## Running on Google Colab  *(Easiest — recommended for beginners)*
+## 🚀 Google Colab (Beginner-Friendly — Recommended)
 
-Google Colab provides a free NVIDIA T4 GPU — ideal for TalkForge.
+This is the easiest way to run TalkForge with zero local setup.
 
-### Step 1 — Open the notebook
+### Step-by-step
 
-Go to [colab.research.google.com](https://colab.research.google.com) → **File → Open notebook → Upload** → select `TalkForge.ipynb`.
+**1. Open the notebook**
 
-### Step 2 — Enable GPU runtime
+Go to [Google Colab](https://colab.research.google.com) and upload `TalkForge.ipynb`, or open it directly from GitHub.
+
+**2. Select a GPU runtime**
 
 ```
-Runtime → Change runtime type → T4 GPU → Save
+Runtime → Change runtime type → Hardware accelerator → T4 GPU → Save
 ```
 
-### Step 3 — Run all cells
+**3. Run all cells**
 
-Click **Runtime → Run all** (or press `Ctrl+F9`) and wait.
+```
+Runtime → Run all
+```
 
-The notebook will automatically:
-- Install FFmpeg, cmake, and build tools
-- Clone the TalkForge repository
-- Clone SadTalker source code
-- Install all Python packages (including dlib, compiled from source)
-- Download all model weights (~3.2 GB total)
-- Verify the setup
-- Launch the Gradio app
+**4. Wait (~5–10 minutes on first run)**
 
-### Step 4 — Open the public URL
+Colab will automatically:
+- Install FFmpeg and system libraries
+- Clone TalkForge and SadTalker
+- Install all Python packages
+- Download all AI model weights from HuggingFace
+- Launch the Gradio web interface
 
-At the end of the last cell, look for a line like:
+**5. Click the public URL**
+
+When the last cell finishes, you will see output like:
 
 ```
 Running on public URL: https://xxxxxxxxxxxx.gradio.live
 ```
 
-Click it — TalkForge opens in your browser instantly.
+Click it. TalkForge is live and ready to use.
 
-### Step 5 — Generate your first video
-
-1. **Upload a portrait** — JPG, PNG, or WEBP. Use a clear, front-facing photo.
-2. **Upload audio** — WAV, MP3, M4A, or OGG.
-3. Click **✦ Generate Video**.
-4. Watch the live status: *Preparing model → Loading weights → Processing audio → Generating frames → Rendering video → Finalizing output*.
-5. When done, the video plays automatically in the page.
-6. Use **⬇ Download Video** to save it, **✕ Discard** to delete it, or **↺ Generate New** to start over.
-
-> **Important:** Free Colab sessions are temporary. Download your generated videos before the session ends. They are in `outputs/` in the Colab file browser.
+> **Subsequent runs are faster.** Colab caches downloaded weights in the session. If you close and reopen, weights download again (about 2–3 minutes).
 
 ---
 
-## Running Locally
+## 💻 Local Setup
 
 ### Prerequisites
 
-- Python 3.9 – 3.11
+- Python 3.9 or 3.10
+- NVIDIA GPU with CUDA (strongly recommended)
 - Git
-- FFmpeg
+- FFmpeg installed and on your PATH
 
 **Install FFmpeg:**
 ```bash
 # Ubuntu / Debian
-sudo apt update && sudo apt install ffmpeg -y
+sudo apt-get install ffmpeg
 
-# macOS (Homebrew)
+# macOS
 brew install ffmpeg
 
-# Windows (winget)
-winget install -e --id Gyan.FFmpeg
+# Windows
+# Download from https://ffmpeg.org/download.html and add to PATH
 ```
 
-### Setup
+### Install
 
 ```bash
 # 1. Clone TalkForge
-git clone https://github.com/your-username/TalkForge.git
+git clone https://github.com/rydenxgod-bot/TalkForge.git
 cd TalkForge
 
-# 2. Create and activate a virtual environment (recommended)
-python -m venv .venv
-source .venv/bin/activate       # Windows: .venv\Scripts\activate
+# 2. (Optional but recommended) create a virtual environment
+python -m venv venv
+source venv/bin/activate        # Windows: venv\Scripts\activate
 
-# 3. Install Python dependencies
-pip install -r requirements.txt
-
-# 4. Clone SadTalker source
-git clone --depth 1 https://github.com/OpenTalker/SadTalker.git models/SadTalker
-
-# 5. Install SadTalker's own requirements
-pip install -r models/SadTalker/requirements.txt
-
-# 6. Download all model weights (~3.2 GB)
-python setup_weights.py
-
-# 7. Launch TalkForge
-python main.py
+# 3. Run automated setup
+#    This clones SadTalker, installs all dependencies, and downloads weights
+python setup.py
 ```
 
-Open [http://localhost:7860](http://localhost:7860) in your browser.
-
-### CLI flags
+### Launch
 
 ```bash
-# Create a public shareable Gradio URL
+# With a public share link (accessible from any browser)
 python main.py --share
 
-# Run on a different port
-python main.py --port 8080
+# Local only
+python main.py
 
-# Use a custom output directory
-python main.py --output-dir /data/outputs
-
-# Use a custom weights directory
-python main.py --weights-dir /data/weights
-
-# All options
-python main.py --help
+# Custom port
+python main.py --port 7861
 ```
+
+Open `http://localhost:7860` (or the share URL printed in the terminal).
 
 ---
 
-## Swapping the Model
+## 🎬 How to Use
 
-The model backend is a plug-in. To replace SadTalker with MuseTalk, Wav2Lip, or any other model:
+1. **Upload a portrait image** — JPG or PNG, front-facing, clear face. One person in frame works best.
+2. **Upload an audio file** — WAV or MP3. Clear speech. Any length.
+3. **Click Generate Video** — Progress messages update as the model processes.
+4. **Preview your video** — It plays automatically when ready.
+5. **Download, Discard, or Generate New** — Use the three buttons below the video.
 
-1. Create `models/my_model.py` and subclass `BaseLipSyncModel` from `models/base.py`
-2. Implement the three required methods:
-   - `is_ready() -> bool`
-   - `download_weights(progress_cb=None) -> None`
-   - `generate(image_path, audio_path, output_path, progress_cb=None) -> str`
-3. Change one import in `app/pipeline.py` (line ~16):
-   ```python
-   # Before:
-   from models.sadtalker import SadTalkerModel as _LipSyncModel
-   # After:
-   from models.my_model import MyModel as _LipSyncModel
-   ```
+### Tips for best results
 
-No frontend changes required — the UI and pipeline are model-agnostic.
+- Use a well-lit, front-facing portrait photo
+- A plain or simple background gives cleaner output
+- Higher quality audio = better lip sync
+- MP3 is fine; WAV gives marginally better audio extraction
+- Avoid very dark or heavily filtered images
 
 ---
 
-## Troubleshooting
+## 🔄 Swapping the Model
 
-### "dlib fails to install"
+TalkForge is designed so the AI model can be replaced without touching the frontend.
 
-```bash
-sudo apt install cmake build-essential libopenblas-dev liblapack-dev
-pip install dlib
+All inference logic lives in `app/inference.py`. The UI calls one function:
+
+```python
+generate_talking_head(image_path, audio_path, progress_callback) -> str
 ```
 
-### "CUDA out of memory"
+To swap SadTalker for MuseTalk, Wav2Lip, or any other model:
+1. Edit `app/inference.py`
+2. Keep the same function signature
+3. Return the path to the generated MP4
 
-- Restart your runtime (Colab) or Python process
-- Close other GPU applications
-- The model runs on CPU automatically if CUDA is unavailable (slower but functional)
-
-### "No module named 'basicsr' / 'gfpgan'"
-
-```bash
-pip install basicsr realesrgan gfpgan --upgrade
-```
-
-### "FFmpeg not found"
-
-```bash
-# Confirm FFmpeg is in PATH:
-which ffmpeg      # Linux / macOS
-where ffmpeg      # Windows
-
-# If missing, install it (see Prerequisites above)
-```
-
-### "SadTalker weights download is very slow"
-
-```bash
-# Use the HuggingFace mirror:
-export HF_ENDPOINT=https://hf-mirror.com
-python setup_weights.py
-```
-
-### "Face not detected in image"
-
-- Use a clear, front-facing portrait
-- Ensure the face is well-lit and unobstructed
-- Minimum recommended resolution: 256 × 256 px
-- Avoid heavy occlusion (sunglasses, masks, hats covering the face)
-
-### "Generated video has no audio"
-
-FFmpeg is required for audio muxing. Verify it is installed and on your PATH:
-```bash
-ffprobe -version
-```
-
-### "Weight download fails halfway"
-
-Re-run `python setup_weights.py` — it skips files already downloaded (checks file size).
+The frontend (`app/ui.py`) does not need to change.
 
 ---
 
-## Roadmap
+## 🛠 Troubleshooting
 
-| Version | Features |
-|---------|----------|
-| **V1** *(current)* | Portrait + audio → lip-synced MP4 via SadTalker |
-| **V1.1** | Batch processing, configurable output resolution, video-to-video driving |
-| **V1.2** | MuseTalk backend option, faster inference, Docker image |
-| **V2** | Emotion control, background replacement, multi-speaker |
-| **V2+** | REST API, CLI tool, hosted demo |
+**"CUDA not available" or very slow generation**
+→ Make sure your runtime is set to T4 GPU (Colab: Runtime → Change runtime type).
 
----
+**"SadTalker not found" error**
+→ Re-run Cell 3 of the notebook, or run `python setup.py` locally.
 
-## Contributing
+**"Weights not found" error**
+→ Re-run Cells 5 and 6 of the notebook, or run `python setup.py` locally.
 
-Pull requests are welcome. For major changes, open an issue first to discuss.
+**FFmpeg not found**
+→ Install FFmpeg: `apt-get install ffmpeg` (Linux/Colab) or `brew install ffmpeg` (macOS).
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/my-feature`
-3. Commit: `git commit -m 'Add my feature'`
-4. Push: `git push origin feature/my-feature`
-5. Open a Pull Request
+**No face detected in image**
+→ Use a clearer, front-facing portrait. The model needs to see a face clearly.
 
----
+**Generation hangs or times out**
+→ This can happen with very long audio. Try a shorter clip (under 60 seconds) first.
 
-## Acknowledgements
+**Gradio share link not working**
+→ Gradio share links expire after 72 hours. Re-run Cell 8 to get a fresh link.
 
-- [SadTalker](https://github.com/OpenTalker/SadTalker) — lip sync and 3-D head motion model
-- [GFPGAN](https://github.com/TencentARC/GFPGAN) — face quality enhancement
-- [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN) — background enhancement
-- [Gradio](https://github.com/gradio-app/gradio) — web UI framework
+**Import errors after install**
+→ Restart the Colab runtime (Runtime → Restart runtime) and re-run from Cell 4.
 
 ---
 
-## License
+## 🗺 Roadmap
 
-MIT — see [LICENSE](LICENSE) for full text.
+**V1 (current)**
+- Single image + audio → lip-synced MP4
+- Gradio web UI with progress states
+- Google Colab notebook, zero-config
+
+**V2 (planned)**
+- Video input support (animate a reference video)
+- Resolution selector (256px / 512px)
+- Head motion intensity slider
+- Pose style presets (still / subtle / expressive)
+- Batch processing for multiple files
+
+**V3 (future)**
+- MuseTalk integration as alternative model
+- Real-time streaming preview
+- Docker image for one-command local deploy
+- Optional voice cloning pipeline
+
+---
+
+## 📄 License
+
+MIT License — free to use, modify, and distribute. See [LICENSE](LICENSE).
+
+---
+
+## 🙏 Acknowledgements
+
+- [SadTalker](https://github.com/OpenTalker/SadTalker) — Core talking-head synthesis model
+- [GFPGAN](https://github.com/TencentARC/GFPGAN) — Face enhancement
+- [Gradio](https://gradio.app) — Web UI framework
+- [HuggingFace](https://huggingface.co) — Model hosting
+
+---
+
+Made with ⚡ by [Vaexor](https://vaexor.netlify.app) · Open Source · MIT
